@@ -11,6 +11,11 @@ on:
         description: "The image to be used as a base for app containers"
         type: string
         required: false
+      ghcr_prefix:
+        description: "A prefix to add to the image name"
+        type: string
+        # Forks will have gow/ as prefix, while the main repository will not
+        default: "${{ github.repository == 'games-on-whales/gow' && '' || 'gow/' }}"
       image_name:
         description: "The name of the image to build and publish"
         type: string
@@ -107,11 +112,11 @@ jobs:
           fi
 
           if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
-            REGISTRY_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}"
+            REGISTRY_IMAGE="ghcr.io/${{ github.repository_owner }}/${{ inputs.ghcr_prefix }}${{ inputs.image_name }}"
             if [ "$IMAGES" = "" ]; then
-              IMAGES="ghcr.io/${REGISTRY_IMAGE}"
+              IMAGES="${REGISTRY_IMAGE}"
             else
-              IMAGES="$IMAGES,ghcr.io/${REGISTRY_IMAGE}"
+              IMAGES="$IMAGES,${REGISTRY_IMAGE}"
             fi
             PUSH=true
             echo "has_github_token=true" >> $GITHUB_OUTPUT
@@ -135,13 +140,16 @@ jobs:
           # list of Docker images to use as base name for tags
           images: ${{ steps.prep.outputs.images }}
           # generate Docker tags based on the following events/attributes
+          # pr images will never get a sha-tag and neither should forks to not waste GHCR space
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}
             type=edge,branch=master
-            type=ref,event=branch
-            type=sha
+            type=ref,event=${{ github.event_name == 'pull_request' && 'pr,prefix=pr-' || 'branch' }}
+            type=sha${{ github.event_name == 'pull_request' && ',prefix=pr-sha-' || '' }}
           flavor: latest=auto #latest will point to last semver version (stable)
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index,manifest
 
       # Prepare for multi-arch
       - name: Set up QEMU
@@ -182,6 +190,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: ${{ steps.prep.outputs.push }}
           tags: ${{ steps.meta.outputs.tags }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           build-args: |
             IMAGE_SOURCE=${{ steps.prep.outputs.github_server_url }}/${{ github.repository }}
             BASE_IMAGE=${{ inputs.base_image }}
@@ -248,15 +257,15 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}
             type=edge,branch=master
-            type=ref,event=branch
-            type=sha
+            type=ref,event=${{ github.event_name == 'pull_request' && 'pr,prefix=pr-' || 'branch' }}
+            type=sha${{ github.event_name == 'pull_request' && ',prefix=pr-' || '' }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
           if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
               docker buildx imagetools create $(jq -cr '.tags | map(select(startswith("ghcr.io"))) | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
-              $(printf 'ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}@sha256:%s ' *)
+              $(printf 'ghcr.io/${{ github.repository_owner }}/${{ inputs.ghcr_prefix }}${{ inputs.image_name }}@sha256:%s ' *)
           fi
                     # Create manifest for Docker Hub
           if [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
@@ -268,7 +277,7 @@ jobs:
         run: |
           if [ -n "${{ secrets.GITHUB_TOKEN }}" ]; then
             echo "Inspecting GHCR image:"
-            docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ steps.meta.outputs.version }}
+            docker buildx imagetools inspect ghcr.io/${{ github.repository_owner }}/${{ inputs.ghcr_prefix }}${{ inputs.image_name }}:${{ steps.meta.outputs.version }}
           fi
           if [ -n "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
             echo "Inspecting Docker Hub image:"
