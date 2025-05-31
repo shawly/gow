@@ -135,13 +135,16 @@ jobs:
           # list of Docker images to use as base name for tags
           images: ${{ steps.prep.outputs.images }}
           # generate Docker tags based on the following events/attributes
+          # pr images will never get a sha-tag and neither should forks to not waste GHCR space
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}
             type=edge,branch=master
-            type=ref,event=branch
-            type=sha
+            type=ref,event=${{ github.event_name == 'pull_request' && 'pr,prefix=pr-' || 'branch' }}
+            type=sha${{ github.event_name == 'pull_request' && ',prefix=pr-sha-' || '' }}
           flavor: latest=auto #latest will point to last semver version (stable)
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index,manifest
 
       # Prepare for multi-arch
       - name: Set up QEMU
@@ -182,6 +185,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: ${{ steps.prep.outputs.push }}
           tags: ${{ steps.meta.outputs.tags }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           build-args: |
             IMAGE_SOURCE=${{ steps.prep.outputs.github_server_url }}/${{ github.repository }}
             BASE_IMAGE=${{ inputs.base_image }}
@@ -248,8 +252,8 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}
             type=edge,branch=master
-            type=ref,event=branch
-            type=sha
+            type=ref,event=${{ github.event_name == 'pull_request' && 'pr,prefix=pr-' || 'branch' }}
+            type=sha${{ github.event_name == 'pull_request' && ',prefix=pr-' || '' }}
 
       - name: Create manifest list and push
         working-directory: /tmp/digests
