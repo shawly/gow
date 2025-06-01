@@ -24,6 +24,18 @@ RUN apt-get update && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* 
 
+# install feral gamemode
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends meson libsystemd-dev pkg-config ninja-build git dbus-user-session libdbus-1-dev libinih-dev build-essential && \
+    git clone https://github.com/FeralInteractive/gamemode.git /tmp/feral && \
+    cd /tmp/feral && \
+    meson setup builddir --prefix=/usr --buildtype debugoptimized && \
+    ninja -C builddir && \
+    ninja install -C builddir && \
+    # Cleanup \
+    apt-get autoremove -y build-essential meson libsystemd-dev pkg-config libinih-dev ninja-build git libdbus-1-dev && \
+    rm -rf /var/lib/apt/lists/* 
+
 COPY --chmod=777 scripts/startup.sh /opt/gow/startup-app.sh
 
 ENV XDG_RUNTIME_DIR=/tmp/.X11-unix
