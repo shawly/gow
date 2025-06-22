@@ -26,6 +26,8 @@ FROM ${BASE_APP_IMAGE}
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+ARG STEAM_ROM_MANAGER_VERSION=2.5.29
+
 ARG REQUIRED_PACKAGES=" \
     steam \
     dbus-daemon dbus-system-bus-common dbus-session-bus-common whoopsie network-manager bluez \
@@ -48,6 +50,10 @@ RUN apt-get update -y && \
     # \
     # Fix steam updater UI font file \
     ln -s /usr/share/fonts/truetype/dejavu /usr/share/fonts/truetype/ttf-dejavu && \
+    # Install Steam ROM Manager \
+    curl -L --output /tmp/steam-rom-manager.deb "https://github.com/SteamGridDB/steam-rom-manager/releases/download/v${STEAM_ROM_MANAGER_VERSION}/steam-rom-manager_${STEAM_ROM_MANAGER_VERSION}_amd64.deb" && \
+    apt-get install -y /tmp/steam-rom-manager.deb &&  \
+    rm -f /tmp/steam-rom-manager.deb && \
     # \
     # Cleanup \
     apt-get remove -y python3-six software-properties-common && \
