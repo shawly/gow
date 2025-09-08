@@ -60,6 +60,7 @@ _INSTALL_PACKAGES
 
 # Import overlay
 COPY rootfs/ /
+COPY rootfs/etc/skel/* /root/
 
 # Start s6
 ENTRYPOINT ["/init"]
