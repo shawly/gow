@@ -1,0 +1,26 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+
+set -euo pipefail
+
+source /opt/gow/bash-lib/utils.sh
+
+PUID="${PUID:-1000}"
+PGID="${PGID:-1000}"
+UMASK="${UMASK:-000}"
+XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$PUID}"
+
+gow_log "**** Checking for legacy init scripts ****"
+
+if [[ -d "/etc/cont-init.d/" ]]; then
+    gow_log "Found /etc/cont-init.d/, legacy cont-init.d scripts are not compatible with new s6-overlay init system!"
+    gow_log "The base image you are using uses s6-overlay init system so your image should be migrated, otherwise unexpected behaviour may occur."
+    gow_log_error "Legacy cont-init.d scripts detected!"
+    if [[ "${GOW_LEGACY_INIT_IGNORE:-}" -ne 1 ]]; then
+        exit 1
+    else
+        gow_log "GOW_LEGACY_INIT_IGNORE=1 is set, ignoring legacy init scripts and continuing."
+    fi
+else
+    gow_log_done
+fi

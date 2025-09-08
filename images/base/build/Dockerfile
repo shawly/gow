@@ -59,7 +59,7 @@ echo
 _INSTALL_PACKAGES
 
 # Import overlay
-COPY overlay /
+COPY rootfs/ /
 
 # Start s6
 ENTRYPOINT ["/init"]
