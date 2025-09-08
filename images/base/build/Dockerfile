@@ -1,6 +1,15 @@
 # syntax=docker/dockerfile:1.4
 FROM ubuntu:25.04
 
+ARG TARGETARCH TARGETVARIANT
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Set vars for s6 overlay
+ARG S6_OVERLAY_VERSION="v3.2.1.0"
+ARG S6_OVERLAY_BASE_URL="https://github.com/just-containers/s6-overlay/releases/download/${S6_OVERLAY_VERSION}"
+ARG S6_OVERLAY_NOARCH="${S6_OVERLAY_BASE_URL}/s6-overlay-noarch.tar.xz"
+
 # Configure default user and set env
 # The users UID and GID will be set on container startup
 ENV \
@@ -8,15 +17,8 @@ ENV \
     PGID=1000 \
     UMASK=000 \
     UNAME="retro" \
-    HOME="/home/retro" \
-    TZ="Europe/London" \
-    DEBIAN_FRONTEND=noninteractive \
+    TZ="Etc/UTC" \
     NEEDRESTART_SUSPEND=1
-
-ARG TARGETARCH TARGETVARIANT
-
-# Install default required packages
-ARG GOSU_VERSION=1.14
 
 RUN <<_INSTALL_PACKAGES
 set -e
@@ -33,16 +35,21 @@ apt-get install -y --no-install-recommends \
     libnss3 \
     wget \
     curl \
-    jq
+    jq \
+    xz-utils
 
-echo "**** Install gosu ****"
-wget --progress=dot:giga \
-    -O /usr/bin/gosu \
-    "https://github.com/tianon/gosu/releases/download/${GOSU_VERSION}/gosu-${TARGETARCH}${TARGETVARIANT}"
-chmod +x /usr/bin/gosu
+echo "**** Install s6-overlay ****"
+case "${TARGETARCH}" in \
+    amd64) S6_ARCH="x86_64" ;;
+    arm64) S6_ARCH="aarch64" ;;
+    *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;;
+esac
 
-echo "**** Verify gosu works ****"
-gosu nobody true && echo "Working!"
+curl -L "${S6_OVERLAY_NOARCH}" | tar -C / -Jxpf -
+curl -L "${S6_OVERLAY_BASE_URL}/s6-overlay-${S6_ARCH}.tar.xz" | tar -C / -Jxpf -
+
+# backwards compatibility for things that depend on gosu
+ln -sf /package/admin/s6/command/s6-setuidgid /usr/local/sbin/gosu
 
 echo "**** Section cleanup ****"
 rm -rf \
@@ -54,8 +61,8 @@ _INSTALL_PACKAGES
 # Import overlay
 COPY overlay /
 
-# Set entrypoint script
-ENTRYPOINT ["/entrypoint.sh"]
+# Start s6
+ENTRYPOINT ["/init"]
 
 ARG IMAGE_SOURCE
 LABEL org.opencontainers.image.source=$IMAGE_SOURCE

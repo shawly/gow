@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/command/with-contenv bash
+# shellcheck shell=bash
 
-# TODO: check whether we need this before actually doing it
-
-set -e
+set -euo pipefail
 
 source /opt/gow/bash-lib/utils.sh
 
@@ -93,3 +92,5 @@ elif [ -e /usr/lib/x86_64-linux-gnu/libnvidia-allocator.so.1 ]; then
     }' > /usr/share/egl/egl_external_platform.d/10_nvidia_wayland.json
   fi
 fi
+
+gow_log_done
