@@ -1,0 +1,24 @@
+#!/command/with-contenv bash
+
+set -euo pipefail
+
+source /opt/gow/bash-lib/utils.sh
+
+if [[ -z "${DISPLAY:-}" ]]; then
+    exit 0
+fi
+
+gow_log "Waiting for X server $DISPLAY to be available"
+
+# Taken from https://gist.github.com/tullmann/476cc71169295d5c3fe6
+MAX=120 # About 120 seconds
+CT=0
+while ! xdpyinfo >/dev/null 2>&1; do
+    sleep 1s
+    CT=$(( CT + 1 ))
+    if [ "$CT" -ge "$MAX" ]; then
+        gow_log_error "Gave up waiting for X server $DISPLAY"
+        exit 1
+    fi
+done
+gow_log "X server $DISPLAY is up after $CT seconds"

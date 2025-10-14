@@ -65,5 +65,8 @@ COPY rootfs/etc/skel/* /root/
 # Start s6
 ENTRYPOINT ["/init"]
 
+# Run startup script
+CMD ["/opt/gow/startup-app.sh"]
+
 ARG IMAGE_SOURCE
 LABEL org.opencontainers.image.source=$IMAGE_SOURCE

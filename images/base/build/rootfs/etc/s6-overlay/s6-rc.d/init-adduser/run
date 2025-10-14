@@ -27,6 +27,10 @@ if [[ "${UNAME}" != "root" ]] && [[ "${PUID}" -gt 0 ]]; then
         oldname=$(id -nu "${PUID}")
         userdel -r "${oldname}"
     fi
+    if [[ -d "/home/${UNAME}" ]]; then
+        gow_log "${TPUT_YELLOW}Home directory /home/${UNAME} already exists!${TPUT_RESET}"
+        gow_log "${TPUT_YELLOW}/etc/skel will not be copied to /home/${UNAME}, this can have unwanted side effects!${TPUT_RESET}"
+    fi
 
     groupadd -f -g "${PGID}" "${UNAME}"
     useradd -m -u "${PUID}" -g "${PGID}" -s /bin/bash "${UNAME}"
@@ -43,8 +47,6 @@ if [[ "${UNAME}" != "root" ]] && [[ "${PUID}" -gt 0 ]]; then
         gow_log "Fix ownership of files in ${USERHOME} not owned by ${UNAME}"
         find "${USERHOME}" \! -user "${PUID}" -exec chown "${PUID}" {} \;
         find "${USERHOME}" \! -group "${PGID}" -exec chown :"${PGID}" {} \;
-    else
-        gow_log "Fix ownership of files in ${USERHOME} not owned by ${UNAME} (set FIX_OWNERSHIP=1 to enable)"
     fi
 
     if [[ -d "${XDG_RUNTIME_DIR}" ]]; then

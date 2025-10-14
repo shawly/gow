@@ -4,7 +4,7 @@
 .fail
     # We don't do socket connection (YET?)
     load-module module-native-protocol-unix auth-anonymous=1 socket=/tmp/pulse/pulse-socket
-    
+
     # Needed in order for other containers to connect to this instance
     # add auth-anonymous=1 if you have permission errors
     # in theory we don't need it since we share the .config/pulse/cookie folder between containers
@@ -17,8 +17,8 @@
 #    load-module module-x11-publish
 #.endif
 
-# Adds a default null sink
-#load-module module-null-sink
+# Load persistent null sink for fallback/streaming
+load-module module-null-sink sink_name=gow_null_sink
 
 ### Make sure we always have a sink around, even if it is a null sink.
 load-module module-always-sink
